@@ -1,0 +1,26 @@
+[
+  {
+    "question": "What does the compiler project do?",
+    "relevant_chunks": [0, 1]
+  },
+  {
+    "question": "What language does the compiler use?",
+    "relevant_chunks": [0, 1]
+  },
+  {
+    "question": "How do I run and test the compiler from the compiler project?",
+    "relevant_chunks": [1]
+  },
+  {
+    "question": "What are all the software and tools required to run the compiler project?",
+    "relevant_chunks": [1]
+  },
+  {
+    "question": "What tools and languages does the low code website generator use?",
+    "relevant_chunks": [2, 3]
+  },
+  {
+    "question": "How do I run and test the low code website generator project?",
+    "relevant_chunks": [3]
+  }
+]
