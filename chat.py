@@ -163,6 +163,28 @@ def main():
         print("\nAnswer:")
         print(answer)
 
+        if results:
+            print("\nSources:")
+
+            seen = set()
+
+            for i, result in enumerate(results, start=1):
+
+                source = (
+                    result["source"],
+                    result["chunk_id"]
+                )
+
+                if source not in seen:
+
+                    print(
+                        f"[{i}] "
+                        f"{result['source']} "
+                        f"(chunk {result['chunk_id']})"
+                    )
+
+                    seen.add(source)
+
 
 if __name__ == "__main__":
     main()

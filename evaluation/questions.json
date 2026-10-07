@@ -1,42 +1,27 @@
 [
   {
-    "question": "What does the compiler project do?",
-    "relevant_chunks": [0, 1]
+    "question": "What algorithms did I use in my ML project?",
+    "expected_projects": ["ml"],
+    "expected_keywords": ["XGBoost", "Random Forest"]
   },
   {
-    "question": "What language does the compiler use?",
-    "relevant_chunks": [0, 1]
+    "question": "What technologies are used in my DBMS project?",
+    "expected_projects": ["dbms"],
+    "expected_keywords": ["FastAPI", "PostgreSQL", "React"]
   },
   {
-    "question": "How do I run and test the compiler from the compiler project?",
-    "relevant_chunks": [1]
+    "question": "Compare my ML and DBMS projects.",
+    "expected_projects": ["ml", "dbms"],
+    "expected_keywords": ["ML", "database"]
   },
   {
-    "question": "What are all the software and tools required to run the compiler project?",
-    "relevant_chunks": [1]
+    "question": "How do I run the compiler from the compiler project?",
+    "expected_projects": ["compiler"],
+    "expected_keywords": ["make", "mips"]
   },
   {
-    "question": "What tools and languages does the low code website generator use?",
-    "relevant_chunks": [6, 7]
-  },
-  {
-    "question": "How do I run and test the low code website generator project?",
-    "relevant_chunks": [6, 7]
-  },
-  {
-    "question": "Explain the flow in e commerce project (dbms project).",
-    "relevant_chunks": [4, 5]
-  },
-  {
-    "question": "How do I run and test ML project?",
-    "relevant_chunks": [13, 14]
-  },
-  {
-    "question": "How do I run and test DBMS (e commerce) project?",
-    "relevant_chunks": [2]
-  },
-  {
-    "question": "What is the final conclusion from the ML project?",
-    "relevant_chunks": [13, 14, 15]
+    "question": "What are all the software and tools required to run the low code website generator project?",
+    "expected_projects": ["low-code"],
+    "expected_keywords": ["gcc", "mvn", "npm", "angular cli"]
   }
 ]

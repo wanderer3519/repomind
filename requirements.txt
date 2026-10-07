@@ -4,3 +4,6 @@ numpy
 openai
 python-dotenv
 rank-bm25
+fastapi
+uvicorn
+streamlit
