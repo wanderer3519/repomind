@@ -13,32 +13,47 @@ client = OpenAI(
 )
 
 
-def generate_answer(question, results):
+def generate_answer(question, results, use_context = True):
+    
+    if not use_context:
+        prompt = f"""
+Answer the following question normally.
 
-    context = "\n\n".join(
-        [
-            f"Source: {result['source']}\n"
-            f"{result['text']}"
-            for result in results
-        ]
-    )
+Question:
+{question}
+"""
 
-    prompt = f"""
+    else:
+
+        context = "\n\n".join(
+            [
+                f"Project: {result['project']}\n"
+                f"Source: {result['source']}\n"
+                f"Chunk: {result['chunk_id']}\n"
+                f"{result['text']}"
+                for result in results
+            ]
+        )
+
+        prompt = f"""
 You are a helpful technical assistant.
 
-Answer the user's question using ONLY the
-provided context.
+Answer the user's question using ONLY
+the provided project evidence.
+
+When comparing projects, keep the evidence
+from each project separate and explicitly
+compare them.
 
 If the answer cannot be found in the context,
 say:
 
 "I don't know based on the provided documents."
 
-Do not use outside knowledge.
+Always mention the source(s) supporting
+your answer.
 
-Always mention the source(s) supporting your answer.
-
-CONTEXT:
+PROJECT EVIDENCE:
 
 {context}
 

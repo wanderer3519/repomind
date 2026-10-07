@@ -28,8 +28,12 @@ class BM25Retriever:
         for index in ranked_indices[:k]:
 
             results.append({
-                "text": self.chunks[index]["text"],
+                "chunk_id": self.chunks[index]["chunk_id"],
+                "project": self.chunks[index]["project"],
+                "document_type": self.chunks[index]["document_type"],
                 "source": self.chunks[index]["source"],
+                "chunk_number": self.chunks[index]["chunk_number"],
+                "text": self.chunks[index]["text"],
                 "score": float(scores[index])
             })
 

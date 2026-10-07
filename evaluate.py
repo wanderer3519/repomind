@@ -10,18 +10,7 @@ CHUNKS_PATH = "data/index/chunks.json"
 QUESTIONS_PATH = "evaluation/questions.json"
 
 
-def get_chunk_id(result, chunks):
-
-    for i, chunk in enumerate(chunks):
-
-        if chunk["text"] == result["text"]:
-            return i
-
-    return None
-
-
-def recall_at_k(retriever, questions, chunks, k):
-
+def recall_at_k(retriever, questions, k):
     hits = 0
 
     for item in questions:
@@ -32,7 +21,7 @@ def recall_at_k(retriever, questions, chunks, k):
         )
 
         retrieved_ids = {
-            get_chunk_id(result, chunks)
+            result["chunk_id"]
             for result in results
         }
 
@@ -40,18 +29,99 @@ def recall_at_k(retriever, questions, chunks, k):
             item["relevant_chunks"]
         )
 
-        if relevant_ids.intersection(
-            retrieved_ids
-        ):
+        if relevant_ids.intersection(retrieved_ids):
             hits += 1
 
     return hits / len(questions)
 
+def reciprocal_rank(retriever, questions, k=5):
+
+    total = 0.0
+
+    for item in questions:
+
+        results = retriever.search(
+            item["question"],
+            k=k
+        )
+
+        relevant_ids = set(
+            item["relevant_chunks"]
+        )
+
+        for rank, result in enumerate(
+            results,
+            start=1
+        ):
+
+            if result["chunk_id"] in relevant_ids:
+                total += 1 / rank
+                break
+
+    return total / len(questions)
+
+
+def print_retrieval_results(
+    retrievers,
+    questions,
+    k=5
+):
+    """
+    Print the retrieved chunk IDs for every
+    question and every retriever.
+    """
+
+    for question_number, item in enumerate(
+        questions,
+        start=1
+    ):
+
+        print("\n" + "=" * 70)
+        print(
+            f"Question {question_number}: "
+            f"{item['question']}"
+        )
+
+        print(
+            f"Expected chunks: "
+            f"{item['relevant_chunks']}"
+        )
+
+        for name, retriever in retrievers.items():
+
+            results = retriever.search(
+                item["question"],
+                k=k
+            )
+
+            retrieved_ids = [
+                result["chunk_id"]
+                for result in results
+            ]
+
+            print(
+                f"{name:<12}: "
+                f"{retrieved_ids}"
+            )
+
 
 def main():
 
-    with open(QUESTIONS_PATH, "r") as f:
+    # -----------------------------
+    # Load evaluation questions
+    # -----------------------------
+
+    with open(
+        QUESTIONS_PATH,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
         questions = json.load(f)
+
+    # -----------------------------
+    # Load vector store
+    # -----------------------------
 
     store = VectorStore()
 
@@ -59,6 +129,10 @@ def main():
         INDEX_PATH,
         CHUNKS_PATH
     )
+
+    # -----------------------------
+    # Create retrievers
+    # -----------------------------
 
     bm25 = BM25Retriever(
         store.chunks
@@ -75,17 +149,59 @@ def main():
         "Hybrid RRF": hybrid
     }
 
+    # -----------------------------
+    # Evaluation metrics
+    # -----------------------------
+
+    print("\n" + "=" * 70)
+    print("RECALL RESULTS")
+    print("=" * 70)
+
     for name, retriever in retrievers.items():
 
-        score = recall_at_k(
+        print(f"\n{name}")
+
+        for k in [1, 3, 5]:
+
+            score = recall_at_k(
+                retriever,
+                questions,
+                k
+            )
+
+            print(
+                f"Recall@{k}: "
+                f"{score:.3f}"
+            )
+
+    # -----------------------------
+    # Detailed retrieval results
+    # -----------------------------
+
+    print("\n\n" + "=" * 70)
+    print("DETAILED RETRIEVAL RESULTS")
+    print("=" * 70)
+
+    print_retrieval_results(
+        retrievers,
+        questions,
+        k=5
+    )
+
+    print("\n" + "=" * 70)
+    print("MRR RESULTS")
+    print("=" * 70)
+
+    for name, retriever in retrievers.items():
+
+        score = reciprocal_rank(
             retriever,
             questions,
-            store.chunks,
-            k=2
+            k=5
         )
 
         print(
-            f"{name} Recall@2: "
+            f"{name} MRR@5: "
             f"{score:.3f}"
         )
 

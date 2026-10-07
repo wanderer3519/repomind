@@ -1,7 +1,6 @@
 faiss-cpu
 pypdf
 numpy
-ollama
 openai
 python-dotenv
 rank-bm25

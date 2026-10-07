@@ -1,7 +1,17 @@
+import os
 import faiss
 import numpy as np
-import ollama
 import json
+
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY")
+)
 
 
 class VectorStore:
@@ -12,13 +22,18 @@ class VectorStore:
 
     def get_embeddings(self, texts):
 
-        response = ollama.embed(
-            model="nomic-embed-text",
+        response = client.embeddings.create(
+            model="nvidia/nemotron-3-embed-1b:free",
             input=texts
         )
 
+        embeddings = [
+            item.embedding
+            for item in response.data
+        ]
+
         return np.array(
-            response["embeddings"],
+            embeddings,
             dtype="float32"
         )
 
@@ -33,7 +48,6 @@ class VectorStore:
 
         embeddings = self.get_embeddings(texts)
 
-        # Normalize vectors so inner product = cosine similarity
         faiss.normalize_L2(embeddings)
 
         dimension = embeddings.shape[1]
@@ -43,45 +57,22 @@ class VectorStore:
         self.index.add(embeddings)
 
         print(
-            f"FAISS index built with "
-            f"{len(chunks)} chunks."
+            f"FAISS index built with {len(chunks)} chunks."
         )
-
-    def search(self, query, k=5):
-
-        query_embedding = self.get_embeddings(
-            [query]
-        )
-
-        faiss.normalize_L2(query_embedding)
-
-        scores, indices = self.index.search(
-            query_embedding,
-            k
-        )
-
-        results = []
-
-        for score, index in zip(
-            scores[0],
-            indices[0]
-        ):
-
-            results.append({
-                "text": self.chunks[index]["text"],
-                "source": self.chunks[index]["source"],
-                "score": float(score)
-            })
-
-        return results
 
     def save(self, index_path, chunks_path):
+
         faiss.write_index(
             self.index,
             index_path
         )
 
-        with open(chunks_path, "w", encoding="utf-8") as f:
+        with open(
+            chunks_path,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
             json.dump(
                 self.chunks,
                 f,
@@ -92,12 +83,53 @@ class VectorStore:
         print("Index saved.")
 
     def load(self, index_path, chunks_path):
-        self.index = faiss.read_index(index_path)
 
-        with open(chunks_path, "r", encoding="utf-8") as f:
+        self.index = faiss.read_index(
+            index_path
+        )
+
+        with open(
+            chunks_path,
+            "r",
+            encoding="utf-8"
+        ) as f:
+
             self.chunks = json.load(f)
 
         print(
-            f"Index loaded with "
-            f"{len(self.chunks)} chunks."
+            f"Index loaded with {len(self.chunks)} chunks."
         )
+
+    def search(self, query, k=5):
+
+        query_embedding = self.get_embeddings(
+            [query]
+        )
+
+        faiss.normalize_L2(
+            query_embedding
+        )
+
+        scores, indices = self.index.search(
+            query_embedding,
+            min(k, len(self.chunks))
+        )
+
+        results = []
+
+        for score, index in zip(
+            scores[0],
+            indices[0]
+        ):
+
+            results.append({
+                "chunk_id": self.chunks[index]["chunk_id"],
+                "project": self.chunks[index]["project"],
+                "document_type": self.chunks[index]["document_type"],
+                "source": self.chunks[index]["source"],
+                "chunk_number": self.chunks[index]["chunk_number"],
+                "text": self.chunks[index]["text"],
+                "score": float(score)
+            })
+
+        return results

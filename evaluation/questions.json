@@ -17,10 +17,26 @@
   },
   {
     "question": "What tools and languages does the low code website generator use?",
-    "relevant_chunks": [2, 3]
+    "relevant_chunks": [6, 7]
   },
   {
     "question": "How do I run and test the low code website generator project?",
-    "relevant_chunks": [3]
+    "relevant_chunks": [6, 7]
+  },
+  {
+    "question": "Explain the flow in e commerce project (dbms project).",
+    "relevant_chunks": [4, 5]
+  },
+  {
+    "question": "How do I run and test ML project?",
+    "relevant_chunks": [13, 14]
+  },
+  {
+    "question": "How do I run and test DBMS (e commerce) project?",
+    "relevant_chunks": [2]
+  },
+  {
+    "question": "What is the final conclusion from the ML project?",
+    "relevant_chunks": [13, 14, 15]
   }
 ]
