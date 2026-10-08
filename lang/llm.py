@@ -8,7 +8,7 @@ load_dotenv()
 
 
 llm = ChatOpenAI(
-    model="google/gemini-2.5-flash",
+    model="openai/gpt-oss-120b",
     openai_api_key=os.getenv("OPENROUTER_API_KEY"),
     openai_api_base="https://openrouter.ai/api/v1",
     temperature=0,

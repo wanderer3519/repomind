@@ -1,77 +1,243 @@
 import streamlit as st
 import requests
 
+from lang.graph import app as langgraph_app
 
-API_URL = "http://127.0.0.1:8000/api/query"
 
+# --------------------------------------------------
+# Page configuration
+# --------------------------------------------------
 
 st.set_page_config(
     page_title="RepoMind",
-    page_icon="🧠",
+    page_icon="🤖",
     layout="wide"
 )
 
 
-st.title("🧠 RepoMind")
+# --------------------------------------------------
+# Header
+# --------------------------------------------------
+
+st.title("🤖 RepoMind")
 st.caption(
-    "Evidence-grounded AI assistant for software projects"
+    "Evidence-Grounded AI Engineering Assistant"
 )
+
+
+# --------------------------------------------------
+# Sidebar
+# --------------------------------------------------
+
+st.sidebar.header("Configuration")
+
+implementation = st.sidebar.radio(
+    "RAG implementation",
+    [
+        "From-scratch RAG",
+        "LangGraph"
+    ]
+)
+
+
+# --------------------------------------------------
+# Question
+# --------------------------------------------------
 
 question = st.text_area(
     "Ask a question about your projects",
     placeholder=(
-        "e.g. Compare my ML and DBMS projects."
+        "Example: Compare my ML project and compiler project."
     ),
     height=100
 )
 
 
-if st.button("Ask RepoMind", type="primary"):
+ask = st.button(
+    "Ask RepoMind",
+    type="primary"
+)
 
-    if not question.strip():
 
-        st.warning("Please enter a question.")
+# --------------------------------------------------
+# Query
+# --------------------------------------------------
 
-    else:
+if ask and question.strip():
 
-        with st.spinner("Thinking..."):
+    question = question.strip()
+
+    # ==============================================
+    # FROM-SCRATCH RAG
+    # ==============================================
+
+    if implementation == "From-scratch RAG":
+
+        try:
 
             response = requests.post(
-                API_URL,
-                json={"question": question},
+                "http://127.0.0.1:8000/api/query",
+                json={
+                    "question": question
+                },
                 timeout=120
             )
 
-        if response.status_code == 200:
+            response.raise_for_status()
 
-            data = response.json()
+            result = response.json()
 
-            st.subheader("Answer")
-
-            st.write(data["answer"])
-
-            st.divider()
-
-            st.subheader("Details")
-
-            st.write(
-                f"**Route:** `{data['route']}`"
+            route = result.get(
+                "route",
+                "UNKNOWN"
             )
 
-            if data["sources"]:
+            answer = result.get(
+                "answer",
+                ""
+            )
 
-                st.subheader("Sources")
+            sources = result.get(
+                "sources",
+                []
+            )
 
-                for source in data["sources"]:
-
-                    st.write(
-                        f"- **{source['project']}** — "
-                        f"{source['source']} "
-                        f"(chunk {source['chunk_id']})"
-                    )
-
-        else:
+        except requests.exceptions.RequestException as e:
 
             st.error(
-                f"API error: {response.status_code}"
+                f"Could not connect to FastAPI: {e}"
             )
+
+            st.stop()
+
+
+    # ==============================================
+    # LANGGRAPH
+    # ==============================================
+
+    else:
+
+        try:
+
+            result = langgraph_app.invoke(
+                {
+                    "question": question
+                }
+            )
+
+            route = result.get(
+                "route",
+                "UNKNOWN"
+            )
+
+            answer = result.get(
+                "answer",
+                ""
+            )
+
+            documents = result.get(
+                "documents",
+                []
+            )
+
+        except Exception as e:
+
+            st.error(
+                f"LangGraph error: {e}"
+            )
+
+            st.stop()
+
+
+    # --------------------------------------------------
+    # Route
+    # --------------------------------------------------
+
+    st.divider()
+
+    route_labels = {
+        "DIRECT": "💬 DIRECT",
+        "RETRIEVE": "🔎 RETRIEVE",
+        "COMPARE": "⚖️ COMPARE"
+    }
+
+    st.subheader(
+        route_labels.get(
+            route,
+            route
+        )
+    )
+
+
+    # --------------------------------------------------
+    # Answer
+    # --------------------------------------------------
+
+    st.markdown("### Answer")
+
+    st.markdown(answer)
+
+
+    # --------------------------------------------------
+    # Sources / Evidence
+    # --------------------------------------------------
+
+    if implementation == "LangGraph":
+
+        documents = result.get(
+            "documents",
+            []
+        )
+
+        if documents:
+
+            with st.expander(
+                "📚 Retrieved evidence"
+            ):
+
+                for i, document in enumerate(
+                    documents,
+                    start=1
+                ):
+
+                    project = document.metadata.get(
+                        "project",
+                        "Unknown project"
+                    )
+
+                    source = document.metadata.get(
+                        "source",
+                        "Unknown source"
+                    )
+
+                    st.markdown(
+                        f"**{i}. {project}**"
+                    )
+
+                    st.caption(source)
+
+                    with st.container(
+                        border=True
+                    ):
+                        st.markdown(
+                            document.page_content
+                        )
+
+
+    # --------------------------------------------------
+    # From-scratch sources
+    # --------------------------------------------------
+
+    else:
+
+        if sources:
+
+            with st.expander(
+                "📚 Sources"
+            ):
+
+                for source in sources:
+
+                    st.markdown(
+                        f"- {source}"
+                    )
