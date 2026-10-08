@@ -222,5 +222,4 @@ __marimo__/
 # files added by me
 .lenv/
 *.pyc
-data/index/
-data/documents/
+data/

@@ -9,25 +9,73 @@ from lang.vectorstore import build_vectorstore, get_retriever
 from lang.llm import llm
 from src.project_extractor import extract_projects
 
+from lang.upload import (
+    load_uploaded_documents,
+    get_project_names,
+    load_project_index,
+)
+from lang.knowledge_base import KnowledgeBase
 
 # --------------------------------------------------
 # 1. Load documents and build retriever
 # --------------------------------------------------
 
-documents = load_documents("data/documents")
-chunks = split_documents(documents)
+knowledge_base = KnowledgeBase()
 
-vectorstore = build_vectorstore(chunks)
-retriever = get_retriever(vectorstore, k=5)
+def load_all_documents():
 
-available_projects = sorted(
-    set(
-        doc.metadata.get("project")
-        for doc in chunks
-        if doc.metadata.get("project")
+    # Built-in projects
+    documents = load_documents("data/documents")
+
+    # User-uploaded projects
+    uploaded_projects = get_project_names()
+
+    for project in uploaded_projects:
+        uploaded_docs = load_uploaded_documents(project)
+        documents.extend(uploaded_docs)
+
+    return documents
+
+def build_current_retriever():
+
+    # Built-in documents
+    documents = load_documents("data/documents")
+    chunks = split_documents(documents)
+
+    base_vectorstore = build_vectorstore(chunks)
+
+    # Load persisted uploaded project indexes
+    uploaded_projects = get_project_names()
+
+    for project in uploaded_projects:
+
+        project_vectorstore = load_project_index(
+            project
+        )
+
+        if project_vectorstore is None:
+            continue
+
+        base_vectorstore.merge_from(
+            project_vectorstore
+        )
+
+    retriever = get_retriever(
+        base_vectorstore,
+        k=5
     )
-)
 
+    projects = sorted(
+        set(
+            doc.metadata.get("project")
+            for doc in chunks
+            if doc.metadata.get("project")
+        )
+        |
+        set(uploaded_projects)
+    )
+
+    return retriever, chunks, projects
 
 # --------------------------------------------------
 # 2. Graph state
@@ -183,13 +231,20 @@ Question:
 
 def retrieve_documents(state: State):
 
+    retriever = knowledge_base.get_retriever(
+        k=5
+    )
+
     documents = retriever.invoke(
         state["question"]
     )
 
     context_parts = []
 
-    for i, document in enumerate(documents, start=1):
+    for i, document in enumerate(
+        documents,
+        start=1
+    ):
 
         project = document.metadata.get(
             "project",
@@ -211,7 +266,9 @@ Source: {source}
 """
         )
 
-    context = "\n\n".join(context_parts)
+    context = "\n\n".join(
+        context_parts
+    )
 
     return {
         "documents": documents,
@@ -239,6 +296,10 @@ def retrieve_answer(state: State):
 
 def extract_compare_projects(state: State):
 
+    available_projects = (
+        knowledge_base.get_projects()
+    )
+
     projects = extract_projects(
         state["question"],
         available_projects
@@ -248,41 +309,88 @@ def extract_compare_projects(state: State):
         "projects": projects
     }
 
-
 # --------------------------------------------------
 # 8. COMPARE - retrieve separately for each project
 # --------------------------------------------------
+
 
 def retrieve_compare_documents(state: State):
 
     all_documents = []
     context_parts = []
 
+    uploaded_projects = set(
+        get_project_names()
+    )
+
     for project in state["projects"]:
 
-        project_documents = [
-            doc
-            for doc in chunks
-            if doc.metadata.get("project") == project
-        ]
+        # -----------------------------
+        # Uploaded project
+        # -----------------------------
 
-        if not project_documents:
-            continue
+        if project in uploaded_projects:
 
-        project_vectorstore = build_vectorstore(
-            project_documents
+            project_vectorstore = (
+                load_project_index(project)
+            )
+
+            if project_vectorstore is None:
+                continue
+
+            project_retriever = (
+                project_vectorstore.as_retriever(
+                    search_kwargs={"k": 3}
+                )
+            )
+
+            retrieved = project_retriever.invoke(
+                state["question"]
+            )
+
+        # -----------------------------
+        # Built-in project
+        # -----------------------------
+
+        else:
+
+            project_documents = [
+                doc
+                for doc in knowledge_base.chunks
+                if doc.metadata.get("project")
+                == project
+            ]
+
+            if not project_documents:
+                continue
+
+            # IMPORTANT:
+            # We don't want to embed these again.
+            #
+            # For now, use the already loaded base
+            # vectorstore and filter by project using
+            # similarity results.
+
+            base_retriever = (
+                knowledge_base.get_retriever(
+                    k=10
+                )
+            )
+
+            candidates = base_retriever.invoke(
+                state["question"]
+            )
+
+            retrieved = [
+                doc
+                for doc in candidates
+                if doc.metadata.get("project")
+                == project
+            ][:3]
+
+        all_documents.extend(
+            retrieved
         )
-
-        project_retriever = get_retriever(
-            project_vectorstore,
-            k=3
-        )
-
-        retrieved = project_retriever.invoke(
-            state["question"]
-        )
-
-        all_documents.extend(retrieved)
 
         project_context = "\n\n".join(
             doc.page_content
@@ -299,13 +407,14 @@ PROJECT: {project}
 """
         )
 
-    context = "\n\n".join(context_parts)
+    context = "\n\n".join(
+        context_parts
+    )
 
     return {
         "documents": all_documents,
         "context": context
     }
-
 
 # --------------------------------------------------
 # 9. COMPARE - generate comparison

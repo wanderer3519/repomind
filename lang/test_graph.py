@@ -69,15 +69,17 @@ def run_question(question):
 def main():
 
     questions = [
+        # # RETRIEVE
+        # "What algorithms did I use in my ML project?",
 
-        # RETRIEVE
-        "What algorithms did I use in my ML project?",
-
-        # DIRECT
-        "What is the capital of Australia?",
+        # # DIRECT
+        # "What is the capital of Australia?",
 
         # COMPARE
-        "Compare my ML project and compiler project."
+        "Compare my test_project and compiler project.",
+
+        # UPLOAD and RETRIEVE
+        "What technologies are used in test_project?"
     ]
 
     for question in questions:
