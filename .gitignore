@@ -223,3 +223,4 @@ __marimo__/
 .lenv/
 *.pyc
 data/
+.vscode/

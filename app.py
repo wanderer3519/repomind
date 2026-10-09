@@ -1,21 +1,17 @@
-import requests
 import streamlit as st
 
 from lang.graph import (
     app as langgraph_app,
+)
+from lang.graph import (
     knowledge_base,
 )
-
 from lang.upload import (
-    save_uploaded_files,
     build_project_index,
-    get_project_names,
+    save_uploaded_files,
 )
 
-
-# --------------------------------------------------
 # Page configuration
-# --------------------------------------------------
 
 st.set_page_config(
     page_title="RepoMind",
@@ -24,10 +20,7 @@ st.set_page_config(
 )
 
 
-# --------------------------------------------------
 # Header
-# --------------------------------------------------
-
 st.title("🧠 RepoMind")
 
 st.markdown(
@@ -39,28 +32,7 @@ or upload your own project documentation.
 """
 )
 
-
-# --------------------------------------------------
-# Sidebar
-# --------------------------------------------------
-
-st.sidebar.title("⚙️ Configuration")
-
-implementation = st.sidebar.radio(
-    "RAG implementation",
-    [
-        "From-scratch RAG",
-        "LangGraph",
-    ],
-)
-
-
-# --------------------------------------------------
 # Project upload
-# --------------------------------------------------
-
-st.sidebar.divider()
-
 st.sidebar.subheader("📁 Add Project")
 
 project_name = st.sidebar.text_input(
@@ -96,33 +68,21 @@ if st.sidebar.button(
         project_name = project_name.strip()
 
         try:
-
-            # --------------------------------------
             # Save uploaded files
-            # --------------------------------------
 
             save_uploaded_files(
                 project_name,
                 uploaded_files,
             )
 
-            # --------------------------------------
             # Build + persist project FAISS index
-            # --------------------------------------
-
-            with st.spinner(
-                "Processing project documents..."
-            ):
+            with st.spinner("Processing project documents..."):
 
                 build_project_index(
                     project_name
                 )
 
-            # --------------------------------------
-            # Add persisted index to running
-            # KnowledgeBase
-            # --------------------------------------
-
+            # Add persisted index to running KnowledgeBase
             knowledge_base.add_project(
                 project_name
             )
@@ -138,10 +98,8 @@ if st.sidebar.button(
             )
 
 
-# --------------------------------------------------
-# Show available projects
-# --------------------------------------------------
 
+# Show available projects
 st.sidebar.divider()
 
 st.sidebar.subheader("📚 Available Projects")
@@ -163,10 +121,8 @@ else:
     )
 
 
-# --------------------------------------------------
-# Main question area
-# --------------------------------------------------
 
+# Main question area
 st.subheader("Ask RepoMind")
 
 question = st.text_area(
@@ -185,12 +141,8 @@ ask = st.button(
 )
 
 
-# --------------------------------------------------
 # Query execution
-# --------------------------------------------------
-
 if ask:
-
     if not question.strip():
 
         st.warning(
@@ -198,219 +150,61 @@ if ask:
         )
 
     else:
+        with st.spinner("RepoMind is thinking..."):
+            result = langgraph_app.invoke({
+                "question": question
+            })
 
-        # ==========================================
-        # LangGraph
-        # ==========================================
-
-        if implementation == "LangGraph":
-
-            with st.spinner(
-                "RepoMind is thinking..."
-            ):
-
-                result = langgraph_app.invoke(
-                    {
-                        "question": question
-                    }
-                )
-
-            route = result.get(
-                "route",
-                "UNKNOWN"
+        route = result.get(
+            "route",
+            "UNKNOWN"
+        )
+        
+        # Route indicator
+        if route == "DIRECT":
+            st.info(
+                "💬 DIRECT — "
+                "No project retrieval required."
             )
 
-            # --------------------------------------
-            # Route indicator
-            # --------------------------------------
-
-            if route == "DIRECT":
-
-                st.info(
-                    "💬 DIRECT — "
-                    "No project retrieval required."
-                )
-
-            elif route == "RETRIEVE":
-
-                st.info(
-                    "🔎 RETRIEVE — "
-                    "Searching project knowledge."
-                )
-
-            elif route == "COMPARE":
-
-                st.info(
-                    "⚖️ COMPARE — "
-                    "Retrieving evidence from projects."
-                )
-
-            # --------------------------------------
-            # Answer
-            # --------------------------------------
-
-            st.subheader("Answer")
-
-            st.markdown(
-                result.get(
-                    "answer",
-                    "No answer generated."
-                )
+        elif route == "RETRIEVE":
+            st.info(
+                "🔎 RETRIEVE — "
+                "Searching project knowledge."
             )
 
-            # --------------------------------------
-            # Retrieved evidence
-            # --------------------------------------
-
-            documents = result.get(
-                "documents",
-                []
+        elif route == "COMPARE":
+            st.info(
+                "⚖️ COMPARE — "
+                "Retrieving evidence from projects."
             )
 
-            if documents:
-
-                with st.expander(
-                    "📄 Retrieved Evidence"
-                ):
-
-                    for i, document in enumerate(
-                        documents,
-                        start=1,
-                    ):
-
-                        st.markdown(
-                            f"### Document {i}"
-                        )
-
-                        st.caption(
-                            f"Project: "
-                            f"{document.metadata.get('project', 'unknown')}"
-                        )
-
-                        st.caption(
-                            f"Source: "
-                            f"{document.metadata.get('source', 'unknown')}"
-                        )
-
-                        st.markdown(
-                            document.page_content
-                        )
-
-                        if i < len(documents):
-
-                            st.divider()
-
-
-        # ==========================================
-        # From-scratch RAG
-        # ==========================================
-
-        else:
-
-            try:
-
-                with st.spinner(
-                    "Querying RepoMind..."
-                ):
-
-                    response = requests.post(
-                        "http://127.0.0.1:8000/query",
-                        json={
-                            "question": question
-                        },
-                        timeout=120,
+        
+        # Answer
+        st.subheader("Answer")
+        st.markdown(
+            result.get(
+                "answer",
+                "No answer generated."
+            )
+        )
+        
+        # Retrieved evidence
+        
+        documents = result.get("documents",[])
+        
+        if documents:
+            with st.expander("📄 Retrieved Evidence"):
+                for i, document in enumerate(documents, start = 1):
+                    st.markdown(f"### Document {i}")
+                    st.caption(
+                        f"Project: "
+                        f"{document.metadata.get('project', 'unknown')}"
                     )
-
-                if response.status_code != 200:
-
-                    st.error(
-                        f"API error: "
-                        f"{response.status_code}"
+                    st.caption(
+                        f"Source: "
+                        f"{document.metadata.get('source', 'unknown')}"
                     )
-
-                else:
-
-                    result = response.json()
-
-                    route = result.get(
-                        "route",
-                        "UNKNOWN"
-                    )
-
-                    # ----------------------------------
-                    # Route indicator
-                    # ----------------------------------
-
-                    if route == "DIRECT":
-
-                        st.info(
-                            "💬 DIRECT"
-                        )
-
-                    elif route == "RETRIEVE":
-
-                        st.info(
-                            "🔎 RETRIEVE"
-                        )
-
-                    elif route == "COMPARE":
-
-                        st.info(
-                            "⚖️ COMPARE"
-                        )
-
-                    # ----------------------------------
-                    # Answer
-                    # ----------------------------------
-
-                    st.subheader("Answer")
-
-                    st.markdown(
-                        result.get(
-                            "answer",
-                            "No answer generated."
-                        )
-                    )
-
-                    # ----------------------------------
-                    # Sources
-                    # ----------------------------------
-
-                    sources = result.get(
-                        "sources",
-                        []
-                    )
-
-                    if sources:
-
-                        with st.expander(
-                            "📄 Sources"
-                        ):
-
-                            for i, source in enumerate(
-                                sources,
-                                start=1,
-                            ):
-
-                                st.markdown(
-                                    f"**Source {i}:** "
-                                    f"{source}"
-                                )
-
-            except requests.exceptions.ConnectionError:
-
-                st.error(
-                    """
-                    Could not connect to the FastAPI server.
-
-                    Start it with:
-
-                    `uvicorn api:app --reload`
-                    """
-                )
-
-            except Exception as e:
-
-                st.error(
-                    f"Something went wrong: {e}"
-                )
+                    st.markdown(document.page_content)
+                    if i < len(documents):
+                        st.divider()
