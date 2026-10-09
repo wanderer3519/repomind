@@ -138,7 +138,9 @@ $$
 \times 100\%
 $$
 
-**Reported result: 80% evaluation pass rate.**
+The test code is run 5 times. The pass ratios are 80%, 100%, 100%, 100% and 100%. Hence the mean pass ratio is 96%.
+
+**Reported result: 96% mean evaluation pass rate.**
 
 This metric provides a simple measure of end-to-end performance across retrieval and answer generation. However, it is a custom evaluation metric rather than a standard retrieval metric such as Recall@K. Keyword matching also does not guarantee that an answer is factually correct or fully supported by the retrieved evidence.
 
