@@ -21,7 +21,6 @@ def save_uploaded_files(project_name, uploaded_files):
     saved_files = []
 
     for uploaded_file in uploaded_files:
-
         file_path = project_dir / uploaded_file.name
 
         with open(file_path, "wb") as f:
@@ -33,13 +32,10 @@ def save_uploaded_files(project_name, uploaded_files):
 
 
 def load_uploaded_documents(project_name):
-
     project_dir = UPLOAD_DIR / project_name
-
     documents = []
 
     for file_path in project_dir.iterdir():
-
         if not file_path.is_file():
             continue
 
@@ -50,22 +46,17 @@ def load_uploaded_documents(project_name):
             docs = loader.load()
 
         elif suffix in [".md", ".txt"]:
-            loader = TextLoader(
-                str(file_path),
-                encoding="utf-8"
-            )
+            loader = TextLoader(str(file_path), encoding="utf-8")
             docs = loader.load()
 
         else:
             continue
 
         for doc in docs:
-            doc.metadata.update(
-                {
-                    "project": project_name,
-                    "source": str(file_path),
-                }
-            )
+            doc.metadata.update({
+                "project": project_name,
+                "source": str(file_path),
+            })
 
         documents.extend(docs)
 
@@ -81,13 +72,11 @@ def build_project_index(project_name):
     )
 
     chunks = splitter.split_documents(documents)
-
     vectorstore = build_vectorstore(chunks)
 
     # Persistent index location
     index_dir = UPLOAD_DIR / project_name / "index"
     index_dir.mkdir(parents=True, exist_ok=True)
-
     vectorstore.save_local(str(index_dir))
 
     return vectorstore, chunks

@@ -1,6 +1,5 @@
 from src.router import route_query
 
-
 questions = [
     "What does the compiler project do?",
     "How do I run the ML project?",
@@ -12,13 +11,7 @@ questions = [
 
 
 for question in questions:
-
     route = route_query(question)
 
-    print(
-        f"\nQuestion: {question}"
-    )
-
-    print(
-        f"Route: {route}"
-    )
+    print(f"\nQuestion: {question}")
+    print(f"Route: {route}")

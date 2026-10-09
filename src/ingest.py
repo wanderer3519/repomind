@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from pypdf import PdfReader
 
 
@@ -11,7 +12,6 @@ def load_documents(directory="data/documents"):
 
         if file_path.suffix.lower() == ".pdf":
             reader = PdfReader(file_path)
-
             text = ""
 
             for page in reader.pages:
@@ -37,17 +37,12 @@ def load_documents(directory="data/documents"):
 
 def chunk_text(text, chunk_size=500, overlap=100):
     words = text.split()
-
     chunks = []
-
     start = 0
 
     while start < len(words):
-
         end = start + chunk_size
-
         chunk = " ".join(words[start:end])
-
         chunks.append(chunk)
 
         start += chunk_size - overlap
@@ -60,24 +55,18 @@ def create_chunks(documents, chunk_size=500, overlap=100):
     chunks = []
 
     for document in documents:
-
         source = document["source"]
         source_path = Path(source)
 
         # Project is the directory immediately
         # below data/documents/
-        project = source_path.parent.name
 
+        project = source_path.parent.name
         document_type = source_path.suffix.lower().lstrip(".")
 
-        text_chunks = chunk_text(
-            document["text"],
-            chunk_size,
-            overlap
-        )
+        text_chunks = chunk_text(document["text"], chunk_size,overlap)
 
         for chunk_number, chunk in enumerate(text_chunks):
-
             chunks.append({
                 "chunk_id": len(chunks),
                 "project": project,

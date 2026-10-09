@@ -1,29 +1,35 @@
 from typing import TypedDict
 
-from langgraph.graph import StateGraph, END
 from langchain_core.prompts import ChatPromptTemplate
+from langgraph.graph import END, StateGraph
 
 from lang.ingest import load_documents
-from lang.splitter import split_documents
-from lang.vectorstore import build_vectorstore, get_retriever
+from lang.knowledge_base import KnowledgeBase
 from lang.llm import llm
-from src.project_extractor import extract_projects
-
+from lang.splitter import split_documents
 from lang.upload import (
-    load_uploaded_documents,
     get_project_names,
     load_project_index,
+    load_uploaded_documents,
 )
-from lang.knowledge_base import KnowledgeBase
+from lang.vectorstore import build_vectorstore, get_retriever
+from src.project_extractor import extract_projects
 
-# --------------------------------------------------
+
+# 0. Graph state
+class State(TypedDict):
+    question: str
+    route: str
+    projects: list
+    documents: list
+    context: str
+    answer: str
+
+
 # 1. Load documents and build retriever
-# --------------------------------------------------
-
 knowledge_base = KnowledgeBase()
 
 def load_all_documents():
-
     # Built-in projects
     documents = load_documents("data/documents")
 
@@ -37,11 +43,9 @@ def load_all_documents():
     return documents
 
 def build_current_retriever():
-
     # Built-in documents
     documents = load_documents("data/documents")
     chunks = split_documents(documents)
-
     base_vectorstore = build_vectorstore(chunks)
 
     # Load persisted uploaded project indexes
@@ -49,50 +53,31 @@ def build_current_retriever():
 
     for project in uploaded_projects:
 
-        project_vectorstore = load_project_index(
-            project
-        )
-
+        project_vectorstore = load_project_index(project)
         if project_vectorstore is None:
             continue
 
-        base_vectorstore.merge_from(
-            project_vectorstore
-        )
+        base_vectorstore.merge_from(project_vectorstore)
 
-    retriever = get_retriever(
-        base_vectorstore,
-        k=5
-    )
+    retriever = get_retriever(base_vectorstore, k = 5)
 
     projects = sorted(
-        set(
+        {
             doc.metadata.get("project")
             for doc in chunks
             if doc.metadata.get("project")
-        )
+        }
         |
         set(uploaded_projects)
     )
 
     return retriever, chunks, projects
 
-# --------------------------------------------------
-# 2. Graph state
-# --------------------------------------------------
-
-class State(TypedDict):
-    question: str
-    route: str
-    projects: list
-    documents: list
-    context: str
-    answer: str
 
 
-# --------------------------------------------------
+
+
 # 3. Prompts
-# --------------------------------------------------
 
 router_prompt = ChatPromptTemplate.from_template(
     """
@@ -148,7 +133,6 @@ Answer:
 """
 )
 
-
 compare_prompt = ChatPromptTemplate.from_template(
     """
 You are RepoMind, an evidence-grounded AI assistant.
@@ -179,17 +163,11 @@ Provide a clear comparison.
 """
 )
 
-
-# --------------------------------------------------
 # 4. Router
-# --------------------------------------------------
-
 def route_question(state: State):
 
     response = llm.invoke(
-        router_prompt.format_messages(
-            question=state["question"]
-        )
+        router_prompt.format_messages(question=state["question"])
     )
 
     route = response.content.strip().upper()
@@ -241,20 +219,9 @@ def retrieve_documents(state: State):
 
     context_parts = []
 
-    for i, document in enumerate(
-        documents,
-        start=1
-    ):
-
-        project = document.metadata.get(
-            "project",
-            "unknown"
-        )
-
-        source = document.metadata.get(
-            "source",
-            "unknown"
-        )
+    for i, document in enumerate(documents, start = 1):
+        project = document.metadata.get("project", "unknown")
+        source = document.metadata.get("source", "unknown")
 
         context_parts.append(
             f"""
@@ -289,69 +256,38 @@ def retrieve_answer(state: State):
         "answer": response.content
     }
 
-
-# --------------------------------------------------
 # 7. COMPARE - identify projects
-# --------------------------------------------------
 
 def extract_compare_projects(state: State):
-
-    available_projects = (
-        knowledge_base.get_projects()
-    )
-
-    projects = extract_projects(
-        state["question"],
-        available_projects
-    )
+    available_projects = knowledge_base.get_projects()
+    projects = extract_projects(state["question"], available_projects)
 
     return {
         "projects": projects
     }
 
-# --------------------------------------------------
 # 8. COMPARE - retrieve separately for each project
-# --------------------------------------------------
-
 
 def retrieve_compare_documents(state: State):
-
     all_documents = []
     context_parts = []
 
-    uploaded_projects = set(
-        get_project_names()
-    )
+    uploaded_projects = set(get_project_names())
 
     for project in state["projects"]:
-
-        # -----------------------------
         # Uploaded project
-        # -----------------------------
 
         if project in uploaded_projects:
-
-            project_vectorstore = (
-                load_project_index(project)
-            )
+            project_vectorstore = load_project_index(project)
 
             if project_vectorstore is None:
                 continue
 
-            project_retriever = (
-                project_vectorstore.as_retriever(
-                    search_kwargs={"k": 3}
-                )
-            )
+            project_retriever = project_vectorstore.as_retriever(search_kwargs={"k": 3})
+            retrieved = project_retriever.invoke(state["question"])
 
-            retrieved = project_retriever.invoke(
-                state["question"]
-            )
-
-        # -----------------------------
+        
         # Built-in project
-        # -----------------------------
-
         else:
 
             project_documents = [
@@ -371,15 +307,8 @@ def retrieve_compare_documents(state: State):
             # vectorstore and filter by project using
             # similarity results.
 
-            base_retriever = (
-                knowledge_base.get_retriever(
-                    k=10
-                )
-            )
-
-            candidates = base_retriever.invoke(
-                state["question"]
-            )
+            base_retriever = knowledge_base.get_retriever(k=10)
+            candidates = base_retriever.invoke(state["question"])
 
             retrieved = [
                 doc
@@ -388,14 +317,8 @@ def retrieve_compare_documents(state: State):
                 == project
             ][:3]
 
-        all_documents.extend(
-            retrieved
-        )
-
-        project_context = "\n\n".join(
-            doc.page_content
-            for doc in retrieved
-        )
+        all_documents.extend(retrieved)
+        project_context = "\n\n".join(doc.page_content for doc in retrieved)
 
         context_parts.append(
             f"""
@@ -407,18 +330,15 @@ PROJECT: {project}
 """
         )
 
-    context = "\n\n".join(
-        context_parts
-    )
+    context = "\n\n".join(context_parts)
 
     return {
         "documents": all_documents,
         "context": context
     }
 
-# --------------------------------------------------
+
 # 9. COMPARE - generate comparison
-# --------------------------------------------------
 
 def compare_answer(state: State):
 
@@ -434,12 +354,9 @@ def compare_answer(state: State):
     }
 
 
-# --------------------------------------------------
 # 10. Decide route
-# --------------------------------------------------
 
 def decide_route(state: State):
-
     if state["route"] == "DIRECT":
         return "direct"
 
@@ -448,51 +365,19 @@ def decide_route(state: State):
 
     return "retrieve"
 
-
-# --------------------------------------------------
 # 11. Build graph
-# --------------------------------------------------
 
 graph = StateGraph(State)
 
-graph.add_node(
-    "router",
-    route_question
-)
-
-graph.add_node(
-    "direct",
-    direct_answer
-)
-
-graph.add_node(
-    "retrieve_documents",
-    retrieve_documents
-)
-
-graph.add_node(
-    "retrieve_answer",
-    retrieve_answer
-)
-
-graph.add_node(
-    "extract_compare_projects",
-    extract_compare_projects
-)
-
-graph.add_node(
-    "retrieve_compare_documents",
-    retrieve_compare_documents
-)
-
-graph.add_node(
-    "compare_answer",
-    compare_answer
-)
-
+graph.add_node("router", route_question)
+graph.add_node("direct", direct_answer)
+graph.add_node("retrieve_documents", retrieve_documents)
+graph.add_node("retrieve_answer", retrieve_answer)
+graph.add_node("extract_compare_projects", extract_compare_projects)
+graph.add_node("retrieve_compare_documents", retrieve_compare_documents)
+graph.add_node("compare_answer", compare_answer)
 
 graph.set_entry_point("router")
-
 
 graph.add_conditional_edges(
     "router",
@@ -504,44 +389,16 @@ graph.add_conditional_edges(
     }
 )
 
-
 # RETRIEVE
-
-graph.add_edge(
-    "retrieve_documents",
-    "retrieve_answer"
-)
-
-graph.add_edge(
-    "retrieve_answer",
-    END
-)
-
+graph.add_edge("retrieve_documents", "retrieve_answer")
+graph.add_edge("retrieve_answer", END)
 
 # COMPARE
-
-graph.add_edge(
-    "extract_compare_projects",
-    "retrieve_compare_documents"
-)
-
-graph.add_edge(
-    "retrieve_compare_documents",
-    "compare_answer"
-)
-
-graph.add_edge(
-    "compare_answer",
-    END
-)
-
+graph.add_edge("extract_compare_projects", "retrieve_compare_documents")
+graph.add_edge("retrieve_compare_documents", "compare_answer")
+graph.add_edge("compare_answer", END)
 
 # DIRECT
-
-graph.add_edge(
-    "direct",
-    END
-)
-
+graph.add_edge("direct", END)
 
 app = graph.compile()

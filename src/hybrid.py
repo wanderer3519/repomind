@@ -1,15 +1,18 @@
 class HybridRetriever:
+    
     def __init__(self, dense_retriever, bm25_retriever):
         self.dense_retriever = dense_retriever
         self.bm25_retriever = bm25_retriever
 
     def search(self, query, k=5, rrf_k=60, projects=None):
         # Retrieve more candidates before filtering
+
         dense_results = self.dense_retriever.search(query, k=len(self.dense_retriever.chunks))
         bm25_results = self.bm25_retriever.search(query, k=len(self.bm25_retriever.chunks))
 
         # Filter by project if requested
         if projects:
+
             projects = {p.lower() for p in projects}
 
             dense_results = [
@@ -39,12 +42,7 @@ class HybridRetriever:
             scores[key] = scores.get(key, 0) + 1 / (rrf_k + rank)
             chunks[key] = result
 
-        ranked_chunks = sorted(
-            scores.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
-
+        ranked_chunks = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         results = []
 
         for chunk_id, score in ranked_chunks[:k]:
@@ -55,9 +53,4 @@ class HybridRetriever:
         return results
 
     def search_by_project(self, query, project, k=5, rrf_k=60):
-        return self.search(
-            query,
-            k=k,
-            rrf_k=rrf_k,
-            projects=[project]
-        )
+        return self.search(query, k=k, rrf_k=rrf_k, projects=[project])

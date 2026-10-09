@@ -4,7 +4,6 @@ from lang.embeddings import embeddings
 
 
 def build_vectorstore(documents):
-
     vectorstore = FAISS.from_documents(
         documents,
         embeddings
@@ -14,7 +13,6 @@ def build_vectorstore(documents):
 
 
 def get_retriever(vectorstore, k=5):
-
     return vectorstore.as_retriever(
         search_type="similarity",
         search_kwargs={

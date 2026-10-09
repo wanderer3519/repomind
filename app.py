@@ -1,11 +1,7 @@
 import streamlit as st
 
-from lang.graph import (
-    app as langgraph_app,
-)
-from lang.graph import (
-    knowledge_base,
-)
+from lang.graph import app as langgraph_app
+from lang.graph import knowledge_base
 from lang.upload import (
     build_project_index,
     save_uploaded_files,

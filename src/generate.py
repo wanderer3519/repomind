@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-
 load_dotenv()
 
 
@@ -12,9 +11,7 @@ client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY")
 )
 
-
-def generate_answer(question, results, use_context = True):
-    
+def generate_answer(question, results, use_context = True):    
     if not use_context:
         prompt = f"""
 Answer the following question normally.
@@ -24,7 +21,6 @@ Question:
 """
 
     else:
-
         context_parts = []
 
         for i, result in enumerate(results, start=1):

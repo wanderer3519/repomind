@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -33,17 +34,14 @@ Question:
 
     response = client.chat.completions.create(
         model="google/gemini-2.5-flash",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
+        messages=[{
+            "role": "user",
+            "content": prompt
+        }],
         max_tokens=50
     )
 
     output = response.choices[0].message.content.strip()
-
     projects = []
 
     for project in available_projects:

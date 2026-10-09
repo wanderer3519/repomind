@@ -5,28 +5,17 @@ class BM25Retriever:
 
     def __init__(self, chunks):
         self.chunks = chunks
-
-        tokenized_chunks = [
-            chunk["text"].lower().split()
-            for chunk in chunks
-        ]
-
+        tokenized_chunks = [chunk["text"].lower().split() for chunk in chunks]
         self.bm25 = BM25Okapi(tokenized_chunks)
 
     def search(self, query, k=5):
-
         tokenized_query = query.lower().split()
-
-        scores = self.bm25.get_scores(
-            tokenized_query
-        )
+        scores = self.bm25.get_scores(tokenized_query)
 
         ranked_indices = scores.argsort()[::-1]
-
         results = []
 
         for index in ranked_indices[:k]:
-
             results.append({
                 "chunk_id": self.chunks[index]["chunk_id"],
                 "project": self.chunks[index]["project"],

@@ -1,17 +1,14 @@
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 
 from lang.llm import llm
-
 
 prompt = ChatPromptTemplate.from_template(
     """
 You are a helpful technical assistant.
-
 Answer the question using ONLY the provided context.
 
-If the answer cannot be found in the context,
-say:
+If the answer cannot be found in the context, say:
 
 "I don't know based on the provided documents."
 
@@ -29,7 +26,6 @@ Question:
 
 
 def format_documents(documents):
-
     return "\n\n".join(
         [
             f"""
@@ -44,7 +40,6 @@ Source: {doc.metadata.get('source')}
 
 
 def build_rag_chain(retriever):
-
     chain = (
         {
             "context": retriever | format_documents,

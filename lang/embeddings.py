@@ -16,15 +16,10 @@ client = OpenAI(
 
 
 class OpenRouterEmbeddings(Embeddings):
-
-    def __init__(
-        self,
-        model="nvidia/nemotron-3-embed-1b:free"
-    ):
+    def __init__(self, model="nvidia/nemotron-3-embed-1b:free"):
         self.model = model
 
     def embed_documents(self, texts):
-
         response = client.embeddings.create(
             model=self.model,
             input=texts
@@ -36,13 +31,11 @@ class OpenRouterEmbeddings(Embeddings):
         ]
 
     def embed_query(self, text):
-
         response = client.embeddings.create(
             model=self.model,
             input=[text]
         )
 
         return response.data[0].embedding
-
 
 embeddings = OpenRouterEmbeddings()

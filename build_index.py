@@ -1,10 +1,8 @@
-from src.ingest import load_documents, create_chunks
+from src.ingest import create_chunks, load_documents
 from src.retrieve import VectorStore
-
 
 INDEX_PATH = "data/index/faiss.json"
 CHUNKS_PATH = "data/index/chunks.json"
-
 
 
 def main():
