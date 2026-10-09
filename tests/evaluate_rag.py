@@ -12,7 +12,7 @@ CHUNKS_PATH = "data/index/chunks.json"
 
 
 def main():
-    with open("evaluation/questions.json", "r", encoding="utf-8") as f:
+    with open("tests/questions.json", "r", encoding="utf-8") as f:
         questions = json.load(f)
 
     store = VectorStore()
