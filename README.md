@@ -307,3 +307,11 @@ This project demonstrates practical experience with:
 ---
 
 **RepoMind — turning project documentation into searchable, evidence-grounded knowledge.**
+
+**NOTE**:
+- The uploads are directly done to a folder (data/) in the project.
+- The from scratch implementation is not used in the web application but it can be tested and using some codes in the tests directory.
+
+
+**Webpage**:
+![webpage-pic](images/web-page.png)
